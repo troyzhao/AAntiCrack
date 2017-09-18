@@ -1,7 +1,8 @@
 # AAntiCrack
 防止反注入工具
+
 Disabled the injection defenses tool
-Make 
+ 
 ```
 Usage: AAntiCrack [options] <mach-o-file>
 
