@@ -228,7 +228,9 @@ int inject_dylib(FILE *pf, uint32_t offset, uint32_t magic, const char *dylib_pa
     }
     last_cmd_offset += SwapIfNeed(header.sizeofcmds, arch_magic);
     
-    size_t dylib_path_len = strlen(dylib_path);
+    char dylib_load_path[256] = {0};
+    sprintf(dylib_load_path, "@executable_path/%s", dylib_path);
+    size_t dylib_path_len = strlen(dylib_load_path);
     int padding = 8;
     uint32_t dylib_path_len_padding = (dylib_path_len + padding - 1) & ~(padding-1);
     uint32_t dylib_cmd_size = (uint32_t)(sizeof(struct dylib_command) + dylib_path_len_padding);
@@ -267,7 +269,7 @@ int inject_dylib(FILE *pf, uint32_t offset, uint32_t magic, const char *dylib_pa
     fwrite(&dc, sizeof(struct dylib_command), 1, pf);
     
     char *dylib_path_with_padding = (char *)malloc(dylib_path_len_padding);
-    strcpy(dylib_path_with_padding, dylib_path);
+    strcpy(dylib_path_with_padding, dylib_load_path);
     fwrite(dylib_path_with_padding, dylib_path_len_padding, 1, pf);
     free(dylib_path_with_padding);
     
