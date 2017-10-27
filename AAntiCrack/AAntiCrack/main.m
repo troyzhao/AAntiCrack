@@ -55,10 +55,12 @@ int main(int argc, const char * argv[]) {
         
         int ch;
         int replace_restrict = 0;
+        int injection_dylib = 0;
         while ( (ch = getopt_long(argc, (char *const *)argv, "i:", longopts, NULL)) != -1) {
             switch (ch) {
                 case 'i':
                     // injection
+                    injection_dylib = 1;
                     dylib_path = (char *)malloc(strlen(optarg) + 1);
                     strcpy(dylib_path, optarg);
                     break;
@@ -115,19 +117,22 @@ int main(int argc, const char * argv[]) {
                     }
                     
                     // inject dylib
-                    if (dylib_path != NULL && stat(dylib_path, &s) == 0) {
-                        fseeko(f, 0, SEEK_SET);
-                        
-                        if ( !inject_dylib(f, offset, magic, dylib_path) )
-                        {
-                            print("    ... Inject  failure!");
+                    if (injection_dylib) {
+                        if (dylib_path != NULL && stat(dylib_path, &s) == 0) {
+                            fseeko(f, 0, SEEK_SET);
+                            
+                            if ( !inject_dylib(f, offset, magic, dylib_path) )
+                            {
+                                print("    ... Inject  failure!");
+                            }
+                            
                         }
-                        
+                        else {
+                            print("dylib file is bad!");
+                            perror(binary_file);
+                        }
                     }
-                    else {
-                        print("dylib file is bad!");
-                        perror(binary_file);
-                    }
+                    
                 }
                 
                 
@@ -139,16 +144,20 @@ int main(int argc, const char * argv[]) {
             case MH_CIGAM:
                 print("Thin binary.");
                 if (replace_restrict) { overwriteRestrict(f, 0, magic); }
+                
                 // inject dylib
-                if (dylib_path != NULL && stat(dylib_path, &s) == 0) {
-                    print("Inject dylib %s", dylib_path);
-                    fseeko(f, 0, SEEK_SET);
-                    inject_dylib(f, 0, magic, dylib_path);
+                if (injection_dylib) {
+                    if (dylib_path != NULL && stat(dylib_path, &s) == 0) {
+                        print("Inject dylib %s", dylib_path);
+                        fseeko(f, 0, SEEK_SET);
+                        inject_dylib(f, 0, magic, dylib_path);
+                    }
+                    else {
+                        print("dylib file is bad!");
+                        perror(binary_file);
+                    }
                 }
-                else {
-                    print("dylib file is bad!");
-                    perror(binary_file);
-                }
+                
                 break;
                 
             default:
@@ -293,6 +302,9 @@ void overwriteRestrict(FILE *pf, uint32_t offset, uint32_t magic) {
     
     uint32_t arch_magic = SwapIfNeed(header.magic, header.magic);
     uint32_t cmd_count = SwapIfNeed(header.ncmds, header.magic);
+    
+    int is_64bit = (arch_magic == MH_MAGIC_64 || magic == MH_CIGAM_64);
+    print("-> overwrite __RESTRICT for %s", is_64bit?"64Bit":"32Bit");
     
     off_t cmd_offset = sizeof(struct mach_header);
     
